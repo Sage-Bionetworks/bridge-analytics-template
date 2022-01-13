@@ -1,12 +1,12 @@
-############################################################
-# This script is used for copying stats wiki of a digital health study
-# it will prompt user target id (project to build dashboard and folder structure)
-# and the desired synapseformation template, 
-# health summary table to create table on,
-# and the wiki id of the dashboard to copy
-#
-# Author: aryton.tediarjo@sagebase.org
-############################################################
+"""
+This script is used for copying stats wiki of a digital health study
+it will prompt user target id (project to build dashboard and folder structure)
+and the desired synapseformation template,
+health summary table to create table on,
+and the wiki id of the dashboard to copy
+
+Author: aryton.tediarjo@sagebase.org
+"""
 import sys
 import pandas as pd
 import numpy as np

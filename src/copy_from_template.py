@@ -1,3 +1,12 @@
+############################################################
+# This script is used for copying stats wiki of a digital health study
+# it will prompt user target id (project to build dashboard and folder structure)
+# and the desired synapseformation template, 
+# health summary table to create table on,
+# and the wiki id of the dashboard to copy
+#
+# Author: aryton.tediarjo@sagebase.org
+############################################################
 import sys
 import pandas as pd
 import numpy as np
@@ -13,7 +22,7 @@ from synapseformation import client as synapseformation_client
 parser = argparse.ArgumentParser(description = 'copy from template')
 parser.add_argument("-p", "--template_path", 
                     help= "template path", 
-                    default = "templates/default_template.yaml")
+                    default = "synapseformation_templates/default.yaml")
 parser.add_argument("-t", "--target_id", 
                     help= "target synapse table ID")
 parser.add_argument("-s", "--source_id", 

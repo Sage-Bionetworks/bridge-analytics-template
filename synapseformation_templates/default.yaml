@@ -1,0 +1,30 @@
+- name: bridge-analytics-mpower-test
+  type: Project
+  acl:
+  - principal_id: 3432808 # Team: Bridge Downstream
+    access_type:
+    - READ
+    - DOWNLOAD
+    - UPDATE
+    - CREATE
+    - DELETE
+    - CHANGE_SETTINGS
+    - MODERATE
+    - CHANGE_PERMISSIONS
+  - principal_id: 3394042 # Aryton Tediarjo
+    access_type:
+    - READ
+    - DOWNLOAD
+    - UPDATE
+    - CREATE
+    - DELETE
+    - CHANGE_SETTINGS
+    - MODERATE
+    - CHANGE_PERMISSIONS
+  children:
+  - name: parquet
+    type: Folder
+  - name: raw_data
+    type: Folder
+  - name: examples
+    type: Folder

@@ -1,5 +1,5 @@
-- name: bridge-analytics-mpower-test
-  type: Project
+- name: parquet
+  type: Folder
   acl:
   - principal_id: 3432808 # Team: Bridge Downstream
     access_type:
@@ -11,7 +11,7 @@
     - CHANGE_SETTINGS
     - MODERATE
     - CHANGE_PERMISSIONS
-  - principal_id: 3394042 # Aryton Tediarjo
+  - principal_id: 3342492 # phil
     access_type:
     - READ
     - DOWNLOAD
@@ -21,10 +21,12 @@
     - CHANGE_SETTINGS
     - MODERATE
     - CHANGE_PERMISSIONS
-  children:
-  - name: parquet
-    type: Folder
-  - name: raw_data
-    type: Folder
-  - name: examples
-    type: Folder
+- name: examples
+  type: Folder
+- name: Bridge Raw Data View
+  type: EntityViewSchema
+  scopes: ['{bridge_raw_data}']
+  includeEntityTypes: ['file']
+  addDefaultViewColumns: true
+  addAnnotationColumns: true
+

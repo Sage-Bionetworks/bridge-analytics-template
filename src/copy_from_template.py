@@ -1,22 +1,31 @@
 """
-This script is used for copying stats wiki of a digital health study
-it will prompt user target id (project to build dashboard and folder structure)
-and the desired synapseformation template,
-health summary table to create table on,
-and the wiki id of the dashboard to copy
+This script creates resources over an exporter 3.0
+Synapse project created by Bridge. It's assumed that:
 
-Author: aryton.tediarjo@sagebase.org
+    1. The project already exists.
+    2. The project-level permissions have been set.
+    3. A Bridge Raw Data folder has been created.
+
+The following resources will be created:
+
+    1. A "parquet" and "examples" folder. The parquet folder will
+    be configured to use an S3 bucket owned by the Bridge Downstream
+    account as an external storage location.
+    2. A file view over the Bridge Raw Data folder
+    3. A wiki page will be copied from a template to the project
+    and will be updated to use the above file view in its graphs.
+
+[1] and [2] in the previous list will be created from
+a synapseformation template passed to `--template`. A default
+template has been provided in this repo.
 """
-import sys
-import pandas as pd
-import numpy as np
 import logging
 import argparse
 import yaml
 
+import boto3
 import synapseclient
 import synapseutils
-from synapseclient import File
 import synapseformation.client
 
 logging.basicConfig()
@@ -29,32 +38,41 @@ def read_args():
                         help= "Synapse ID of study project")
     parser.add_argument("--bridge-raw-data",
                         help= "Synapse ID of folder containing Bridge exported data")
+    parser.add_argument("--app",
+                        help= "App identifier associated with --parent-project.")
+    parser.add_argument("--study",
+                        help= "Study identifier associated with --parent-project.")
     parser.add_argument("--template",
                         help= "File path to synapseformation template")
+    parser.add_argument("--owner-txt",
+                        help= "File path to owner.txt for S3 bucket external storage location.")
+    parser.add_argument("--parquet-bucket",
+                        help= "S3 bucket where parquet data will be stored.")
     parser.add_argument("--wiki",
                        help = "Optional. Synapse ID of wiki template for dashboard. "
                        "Defaults to syn26546076.",
                        default = "syn26546076")
+    parser.add_argument("--aws-profile",
+                        help="Optional. The AWS profile to use. "
+                        "defaults to 'default'.")
+    parser.add_argument("--ssm-parameter",
+                        help=("Optional. The name of the SSM parameter containing "
+                              "the Synapse personal access token. "
+                              "If not provided, cached credentials are used"))
     args = parser.parse_args()
     return args
 
-def get_project_id(syn, project_name):
-    logger.info(f'Getting Synapse project id for {project_name}')
-    response = syn.findEntityId(project_name)
-    return "" if response is None else response
-
-def create_project(syn, template_path, project_name):
-    logger.info(f'Creating Synapse project {project_name}, ' + f'with template_path {template_path}')
-    try:
-        response = synapseformation_client.create_synapse_resources(
-                syn = syn,
-                template_path = template_path)
-        logger.debug(f'Project response: {response}')
-        if response is not None:
-            return response.get('id')
-    except Exception as e:
-        logger.error(e)
-        sys.exit(1)
+def get_synapse_client(ssm_parameter=None, aws_session=None):
+    if ssm_parameter is not None:
+        ssm_client = aws_session.client("ssm")
+        token = ssm_client.get_parameter(
+            Name=ssm_parameter,
+            WithDecryption=True)
+        syn = synapseclient.Synapse()
+        syn.login(authToken=token["Parameter"]["Value"])
+    else: # try cached credentials
+        syn = synapseclient.login()
+    return syn
 
 def get_raw_data_view(created_entities, raw_data_folder):
     # This should be unique
@@ -64,6 +82,7 @@ def get_raw_data_view(created_entities, raw_data_folder):
                     'org.sagebionetworks.repo.model.table.EntityView'
             and raw_data_folder.replace("syn", "") in \
                     i["entity"]["scopeIds"]
+            and len(i["entity"]["scopeIds"]) == 1
             ]
     if (len(raw_data_view_finder) == 0):
         raise Exception(
@@ -76,10 +95,33 @@ def get_raw_data_view(created_entities, raw_data_folder):
     raw_data_view = raw_data_view_finder.pop()
     return raw_data_view["entity"]
 
+def get_folder(created_entities, folder_name):
+    # This should be unique
+    folder_finder = [
+            i for i in created_entities
+            if i["entity"]["concreteType"] == \
+                    'org.sagebionetworks.repo.model.Folder'
+            and i["entity"]["name"] == folder_name]
+    if (len(folder_finder) == 0):
+        raise Exception(
+                "Did not find created folder with "
+                f"name {folder_name}")
+    elif (len(folder_finder) > 1):
+        raise Exception(
+                "Found more than one created folder with "
+                f"name {folder_name}")
+    folder = folder_finder.pop()
+    return folder["entity"]
+
 def main():
     # setup
     args = read_args()
-    syn = synapseclient.login()
+    aws_session = boto3.session.Session(
+            profile_name=args.aws_profile,
+            region_name="us-east-1")
+    syn = get_synapse_client(
+            ssm_parameter=args.ssm_parameter,
+            aws_session=aws_session)
     template_substitutions = {
             "{bridge_raw_data}": args.bridge_raw_data
             }
@@ -97,6 +139,21 @@ def main():
             parentid=args.parent_project)
 
     # TODO: link parquet folder to external storage location
+    parquet_folder = get_folder(
+            created_entities=created_entities,
+            folder_name="parquet")
+    base_key = f"bridge-downstream/{args.app}/{args.study}/parquet/"
+    s3_client = aws_session.client("s3")
+    with open (args.owner_txt, "rb") as f:
+        s3_client.put_object(
+                Body=f,
+                Bucket=args.parquet_bucket,
+                Key=base_key + "owner.txt")
+    syn.create_s3_storage_location(
+            folder=parquet_folder["id"],
+            bucket_name=args.parquet_bucket,
+            base_key=base_key,
+            sts_enabled=True)
 
     # copy wiki dashboard
     raw_data_view = get_raw_data_view(

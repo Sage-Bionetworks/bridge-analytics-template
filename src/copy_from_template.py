@@ -84,11 +84,11 @@ def get_raw_data_view(created_entities, raw_data_folder):
                     i["entity"]["scopeIds"]
             and len(i["entity"]["scopeIds"]) == 1
             ]
-    if (len(raw_data_view_finder) == 0):
+    if len(raw_data_view_finder) == 0:
         raise Exception(
                 "Did not find created entity view with "
                 f"scope {raw_data_folder}")
-    elif (len(raw_data_view_finder) > 1):
+    elif len(raw_data_view_finder) > 1:
         raise Exception(
                 "Found more than one created entity view with "
                 f"scope {raw_data_folder}")
@@ -102,11 +102,11 @@ def get_folder(created_entities, folder_name):
             if i["entity"]["concreteType"] == \
                     'org.sagebionetworks.repo.model.Folder'
             and i["entity"]["name"] == folder_name]
-    if (len(folder_finder) == 0):
+    if len(folder_finder) == 0:
         raise Exception(
                 "Did not find created folder with "
                 f"name {folder_name}")
-    elif (len(folder_finder) > 1):
+    elif len(folder_finder) > 1:
         raise Exception(
                 "Found more than one created folder with "
                 f"name {folder_name}")
@@ -138,7 +138,6 @@ def main():
             creation_cls=creation_cls,
             parentid=args.parent_project)
 
-    # TODO: link parquet folder to external storage location
     parquet_folder = get_folder(
             created_entities=created_entities,
             folder_name="parquet")

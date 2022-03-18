@@ -155,6 +155,16 @@ def main():
             base_key=base_key,
             sts_enabled=True)
 
+    # Copy ACL from Bridge Raw Data folder to parquet folder
+    bridge_raw_data_acl = syn._getACL(args.bridge_raw_data)
+    for acl in bridge_raw_data_acl["resourceAccess"]:
+        syn.setPermissions(
+                entity=parquet_folder["id"],
+                principalId=acl["principalId"],
+                accessType=acl["accessType"],
+                warn_if_inherits=False,
+                overwrite=True)
+
     # copy wiki dashboard
     raw_data_view = get_raw_data_view(
             created_entities=created_entities,

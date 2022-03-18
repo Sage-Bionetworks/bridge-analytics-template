@@ -1,26 +1,5 @@
 - name: parquet
   type: Folder
-  acl:
-  - principal_id: 3432808 # Team: Bridge Downstream
-    access_type:
-    - READ
-    - DOWNLOAD
-    - UPDATE
-    - CREATE
-    - DELETE
-    - CHANGE_SETTINGS
-    - MODERATE
-    - CHANGE_PERMISSIONS
-  - principal_id: 3342492 # phil
-    access_type:
-    - READ
-    - DOWNLOAD
-    - UPDATE
-    - CREATE
-    - DELETE
-    - CHANGE_SETTINGS
-    - MODERATE
-    - CHANGE_PERMISSIONS
 - name: examples
   type: Folder
 - name: Bridge Raw Data View

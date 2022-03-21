@@ -55,6 +55,10 @@ def read_args():
     parser.add_argument("--aws-profile",
                         help="Optional. The AWS profile to use. "
                         "defaults to 'default'.")
+    parser.add_argument("--aws-region",
+                        help="Optional. The AWS region to use. "
+                        "defaults to 'us-east-1'.",
+                        default="us-east-1")
     parser.add_argument("--ssm-parameter",
                         help=("Optional. The name of the SSM parameter containing "
                               "the Synapse personal access token. "
@@ -118,7 +122,7 @@ def main():
     args = read_args()
     aws_session = boto3.session.Session(
             profile_name=args.aws_profile,
-            region_name="us-east-1")
+            region_name=args.aws_region)
     syn = get_synapse_client(
             ssm_parameter=args.ssm_parameter,
             aws_session=aws_session)

@@ -158,15 +158,29 @@ def main():
             base_key=base_key,
             sts_enabled=True)
 
-    # Copy ACL from Bridge Raw Data folder to parquet folder
+    # Set permissions on parquet folder by copying ACL
+    # from Bridge Raw Data folder, excepting BridgeDownstream
     bridge_raw_data_acl = syn._getACL(args.bridge_raw_data)
+    bridge_downstream_id = 3432808
     for acl in bridge_raw_data_acl["resourceAccess"]:
-        syn.setPermissions(
-                entity=parquet_folder["id"],
-                principalId=acl["principalId"],
-                accessType=acl["accessType"],
-                warn_if_inherits=False,
-                overwrite=True)
+        if acl["principalId"] == bridge_downstream_id:
+            continue
+        else:
+            syn.setPermissions(
+                    entity=parquet_folder["id"],
+                    principalId=acl["principalId"],
+                    accessType=acl["accessType"],
+                    warn_if_inherits=False,
+                    overwrite=True)
+    # Grant BridgeDownstream admin permissions on parquet folder
+    syn.setPermissions(
+            entity=parquet_folder["id"],
+            principalId=bridge_downstream_id,
+            accessType=[
+                "DOWNLOAD", "READ", "UPDATE", "CREATE", "CHANGE_PERMISSIONS",
+                "DELETE", "MODERATE", "CHANGE_SETTINGS"],
+            warn_if_inherits=False,
+            overwrite=True)
 
     # copy wiki dashboard
     raw_data_view = get_raw_data_view(

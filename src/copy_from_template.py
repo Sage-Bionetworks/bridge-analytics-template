@@ -21,9 +21,11 @@ template has been provided in this repo.
 """
 import logging
 import argparse
-import yaml
+import json
+from copy import deepcopy
 
 import boto3
+import yaml
 import synapseclient
 import synapseutils
 import synapseformation.client
@@ -66,7 +68,9 @@ def read_args():
     args = parser.parse_args()
     return args
 
+
 def get_synapse_client(ssm_parameter=None, aws_session=None):
+    '''Returns a synapse client from credentials stored in SSM'''
     if ssm_parameter is not None:
         ssm_client = aws_session.client("ssm")
         token = ssm_client.get_parameter(
@@ -78,7 +82,12 @@ def get_synapse_client(ssm_parameter=None, aws_session=None):
         syn = synapseclient.login()
     return syn
 
+
 def get_raw_data_view(created_entities, raw_data_folder):
+    '''
+    Get the file view entity which has the raw data folder,
+    and *only* the raw data folder, in its scope.
+    '''
     # This should be unique
     raw_data_view_finder = [
             i for i in created_entities
@@ -92,14 +101,16 @@ def get_raw_data_view(created_entities, raw_data_folder):
         raise Exception(
                 "Did not find created entity view with "
                 f"scope {raw_data_folder}")
-    elif len(raw_data_view_finder) > 1:
+    if len(raw_data_view_finder) > 1:
         raise Exception(
                 "Found more than one created entity view with "
                 f"scope {raw_data_folder}")
     raw_data_view = raw_data_view_finder.pop()
     return raw_data_view["entity"]
 
+
 def get_folder(created_entities, folder_name):
+    ''' Returns the Folder entity associated with folder_name '''
     # This should be unique
     folder_finder = [
             i for i in created_entities
@@ -116,6 +127,66 @@ def get_folder(created_entities, folder_name):
                 f"name {folder_name}")
     folder = folder_finder.pop()
     return folder["entity"]
+
+
+def modify_file_view_types(
+        syn, file_view_id, default_str_length=128,
+        xl_str_fields=["clientInfo"], xl_str_length=512):
+    '''
+    Some string values in the file view are bound to become longer
+    than the default set upon creation of the view. We expand their length
+    to a conservative value so that we can be reasonably certain the file
+    view won't break at some point in the future. We also correct the types
+    of other columns.
+    '''
+    ignore_cols = ["name", "etag", "type"]
+    date_cols = ["exportedOn", "eventTimestamp", "uploadedOn", "scheduleModifiedOn"]
+    boolean_cols = ["timeWindowPersistent"]
+    int_cols = ["sessionInstanceStartDay", "sessionInstanceEndDay",
+            "assessmentRevision", "participantVersion"]
+    file_view = syn.get(file_view_id)
+    cols = list(syn.getColumns(file_view["columnIds"]))
+    col_changes = []
+    for c in cols:
+        if c["columnType"] == "STRING" and c["name"] not in ignore_cols:
+            new_col = deepcopy(c)
+            new_col.pop("id")
+            if new_col["name"] in date_cols:
+                new_col["columnType"] = "DATE"
+                new_col["maximumSize"] = None
+            elif new_col["name"] in boolean_cols:
+                new_col["columnType"] = "BOOLEAN"
+                new_col["maximumSize"] = None
+            elif new_col["name"] in int_cols:
+                new_col["columnType"] = "INTEGER"
+                new_col["maximumSize"] = None
+            elif new_col["name"] in xl_str_fields:
+                new_col["maximumSize"] = xl_str_length
+            else:
+                new_col["maximumSize"] = default_str_length
+            new_col = syn.store(new_col)
+            col_changes.append({
+                "oldColumnId": c["id"],
+                "newColumnId": new_col["id"]})
+        else:
+            col_changes.append({
+                "oldColumnId": c["id"],
+                "newColumnId": c["id"]})
+    schema_change_request = {
+            "concreteType": "org.sagebionetworks.repo.model.table.TableSchemaChangeRequest",
+            "entityId": file_view_id,
+            "changes": col_changes,
+            "orderedColumnIds": [j["newColumnId"] for j in col_changes]
+            }
+    table_update_request = {
+            "concreteType": "org.sagebionetworks.repo.model.table.TableUpdateTransactionRequest",
+            "entityId": file_view_id,
+            "changes": [schema_change_request]
+            }
+    syn.restPOST(
+            f"/entity/{file_view_id}/table/transaction/async/start",
+            body=json.dumps(table_update_request))
+
 
 def main():
     # setup
@@ -165,13 +236,12 @@ def main():
     for acl in bridge_raw_data_acl["resourceAccess"]:
         if acl["principalId"] == bridge_downstream_id:
             continue
-        else:
-            syn.setPermissions(
-                    entity=parquet_folder["id"],
-                    principalId=acl["principalId"],
-                    accessType=acl["accessType"],
-                    warn_if_inherits=False,
-                    overwrite=True)
+        syn.setPermissions(
+                entity=parquet_folder["id"],
+                principalId=acl["principalId"],
+                accessType=acl["accessType"],
+                warn_if_inherits=False,
+                overwrite=True)
     # Grant BridgeDownstream admin permissions on parquet folder
     syn.setPermissions(
             entity=parquet_folder["id"],
@@ -182,10 +252,15 @@ def main():
             warn_if_inherits=False,
             overwrite=True)
 
-    # copy wiki dashboard
+    # Correct column types in raw data file view
     raw_data_view = get_raw_data_view(
             created_entities=created_entities,
             raw_data_folder=args.bridge_raw_data)
+    modify_file_view_types(
+        syn=syn,
+        file_view_id=raw_data_view["id"])
+
+    # copy wiki dashboard
     synapseutils.copyWiki(
         syn = syn,
         entity = args.wiki,

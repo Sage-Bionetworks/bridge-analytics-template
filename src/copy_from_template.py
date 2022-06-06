@@ -46,6 +46,8 @@ def read_args():
                         help= "Study identifier associated with --parent-project.")
     parser.add_argument("--template",
                         help= "File path to synapseformation template")
+    parser.add_argument("--parquet-wiki",
+                        help= "File path to markdown file for parquet folder wiki")
     parser.add_argument("--owner-txt",
                         help= "File path to owner.txt for S3 bucket external storage location.")
     parser.add_argument("--parquet-bucket",
@@ -216,6 +218,10 @@ def main():
     parquet_folder = get_folder(
             created_entities=created_entities,
             folder_name="parquet")
+    parquet_wiki = synapseclient.Wiki(
+            owner=parquet_folder.id,
+            markdownFile=args.parquet_wiki)
+    syn.store(parquet_wiki)
     base_key = f"bridge-downstream/{args.app}/{args.study}/parquet/"
     s3_client = aws_session.client("s3")
     with open (args.owner_txt, "rb") as f:

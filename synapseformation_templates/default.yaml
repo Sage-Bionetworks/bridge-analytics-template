@@ -1,6 +1,6 @@
 - name: parquet
   type: Folder
-- name: examples
+- name: scores
   type: Folder
 - name: Bridge Raw Data View
   type: EntityViewSchema

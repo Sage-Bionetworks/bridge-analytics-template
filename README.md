@@ -9,4 +9,4 @@ Instructions on how to get started with this tool as well as troubleshooting, co
 Instructions on how to troubleshoot are described on the [Troubleshooting section of the Bridge analytics template tool documentation page](https://sagebionetworks.jira.com/wiki/spaces/BD/pages/2758410253/Bridge+analytics+template+tool+documentation#Troubleshooting).
 
 ### Contributing
-Read through the contribution guidelines here in the [Contributing section of the Bridge analytics template tool documentation page](https://sagebionetworks.jira.com/wiki/spaces/BD/pages/2758410253/Bridge+analytics+template+tool+documentation#Contributing) for more information. 
+Read through the [contribution guidelines](CONTRIBUTING.md) for more information. Contributions are welcome from anyone!

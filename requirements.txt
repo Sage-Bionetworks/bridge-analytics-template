@@ -1,0 +1,4 @@
+boto3==1.26.22
+PyYAML==6.0
+synapseclient==2.7.0
+synapseformation==0.0.3

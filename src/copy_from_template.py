@@ -39,34 +39,37 @@ def read_args():
     parser.add_argument("--parent-project",
                         help= "Synapse ID of study project")
     parser.add_argument("--bridge-raw-data",
-                        help= "Synapse ID of folder containing Bridge exported data")
+                        help= "Synapse ID of folder called Bridge Raw Data containing Bridge exported data")
     parser.add_argument("--app",
                         help= "App identifier associated with --parent-project.")
     parser.add_argument("--study",
                         help= "Study identifier associated with --parent-project.")
     parser.add_argument("--template",
-                        help= "File path to synapseformation template")
+                        help= "File path to synapseformation template.")
     parser.add_argument("--parquet-wiki",
-                        help= "File path to markdown file for parquet folder wiki")
+                        help= "File path to markdown file for parquet folder wiki.")
     parser.add_argument("--owner-txt",
                         help= "File path to owner.txt for S3 bucket external storage location.")
     parser.add_argument("--parquet-bucket",
-                        help= "S3 bucket where parquet data will be stored.")
+                        help= "Name of S3 bucket where parquet data will be stored. "
+                        "Defaults to 'bridge-downstream-dev-parquet'",
+                        default = "bridge-downstream-dev-parquet")
     parser.add_argument("--wiki",
-                       help = "Optional. Synapse ID of wiki template for dashboard. "
+                       help = "Optional. Synapse ID of the study project containing the wiki template"
+                       "to use for your study project's dashboard. "
                        "Defaults to syn26546076.",
                        default = "syn26546076")
     parser.add_argument("--aws-profile",
                         help="Optional. The AWS profile to use. "
-                        "defaults to 'default'.")
+                        "Defaults to 'default'.")
     parser.add_argument("--aws-region",
                         help="Optional. The AWS region to use. "
-                        "defaults to 'us-east-1'.",
+                        "Defaults to 'us-east-1'.",
                         default="us-east-1")
     parser.add_argument("--ssm-parameter",
                         help=("Optional. The name of the SSM parameter containing "
                               "the Synapse personal access token. "
-                              "If not provided, cached credentials are used"))
+                              "If not provided, cached credentials are used from your .synapseConfig file"))
     args = parser.parse_args()
     return args
 

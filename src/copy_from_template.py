@@ -65,9 +65,15 @@ def read_args():
                         default = "bridge-downstream-dev-parquet")
     parser.add_argument("--wiki",
                        help = "Optional. Synapse ID of the study project containing the wiki template"
-                       "to use for your study project's dashboard. "
+                       "to use for your study project's main wiki's dashboard. "
                        "Defaults to syn26546076.",
                        default = "syn26546076")
+    parser.add_argument("--wiki-sub-page",
+                help = "Optional. Sub page ID of the wiki template"
+                "to use for your study project's main wiki's dashboard. "
+                "See synapseutils.copy_functions.copyWiki function's entitySubPageId parameter for more info."
+                "Defaults to 614988",
+                default = 614988)
     parser.add_argument("--aws-profile",
                         help="Optional. The AWS profile to use. "
                         "Defaults to 'default'.")
@@ -227,6 +233,7 @@ def main():
             creation_cls=creation_cls,
             parentid=args.parent_project)
 
+    # copy parquet wiki dashboard
     parquet_folder = get_folder(
             created_entities=created_entities,
             folder_name="parquet")
@@ -278,13 +285,14 @@ def main():
     modify_file_view_types(
         syn=syn,
         file_view_id=raw_data_view["id"])
-    # copy wiki dashboard
+    # copy main wiki dashboard
     scores_folder = get_folder(
         created_entities=created_entities,
         folder_name="scores")
     synapseutils.copyWiki(
         syn = syn,
         entity = args.wiki,
+        entitySubPageId=args.wiki_sub_page,
         destinationId = args.parent_project,
         entityMap = {"source_table":raw_data_view["id"],
                      "score_folder" : scores_folder['id']})

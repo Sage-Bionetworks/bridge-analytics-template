@@ -39,7 +39,7 @@ def read_args():
     parser.add_argument("--parent-project",
                         help= "Synapse ID of study project")
     parser.add_argument("--bridge-raw-data",
-                        help= "Synapse ID of folder called Bridge Raw Data containing Bridge exported data")
+                        help= "Synapse ID of folder called 'Bridge Raw Data' containing Bridge exported data")
     parser.add_argument("--app",
                         help= "App identifier associated with --parent-project.")
     parser.add_argument("--study",
@@ -47,7 +47,16 @@ def read_args():
     parser.add_argument("--template",
                         help= "File path to synapseformation template.")
     parser.add_argument("--parquet-wiki",
-                        help= "File path to markdown file for parquet folder wiki.")
+                        help = "Optional. Synapse ID of the study project containing the parquet wiki template"
+                        "to use for your study project's parquet folder's dashboard. "
+                        "Defaults to syn26546076.",
+                        default = "syn26546076")
+    parser.add_argument("--parquet-wiki-sub-page",
+                    help = "Optional. Sub page ID of the parquet wiki template"
+                    "to use for your study project's parquet folder's dashboard. "
+                    "See synapseutils.copy_functions.copyWiki function's entitySubPageId parameter for more info."
+                    "Defaults to 620176",
+                    default = 620176)
     parser.add_argument("--owner-txt",
                         help= "File path to owner.txt for S3 bucket external storage location.")
     parser.add_argument("--parquet-bucket",
@@ -205,7 +214,7 @@ def main():
     template_substitutions = {
             "{bridge_raw_data}": args.bridge_raw_data
             }
-
+    
     # read synapseformation template and create entities
     with open(args.template, "r") as f:
         template = f.read()
@@ -221,10 +230,11 @@ def main():
     parquet_folder = get_folder(
             created_entities=created_entities,
             folder_name="parquet")
-    parquet_wiki = synapseclient.Wiki(
-            owner=parquet_folder.id,
-            markdownFile=args.parquet_wiki)
-    syn.store(parquet_wiki)
+    synapseutils.copyWiki(
+        syn = syn,
+        entity = args.parquet_wiki,
+        destinationId = parquet_folder.id,
+        entitySubPageId = args.parquet_wiki_sub_page)
     base_key = f"bridge-downstream/{args.app}/{args.study}/parquet/"
     s3_client = aws_session.client("s3")
     with open (args.owner_txt, "rb") as f:
@@ -268,7 +278,6 @@ def main():
     modify_file_view_types(
         syn=syn,
         file_view_id=raw_data_view["id"])
-
     # copy wiki dashboard
     synapseutils.copyWiki(
         syn = syn,
@@ -279,3 +288,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

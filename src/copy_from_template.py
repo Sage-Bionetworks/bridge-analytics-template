@@ -279,11 +279,15 @@ def main():
         syn=syn,
         file_view_id=raw_data_view["id"])
     # copy wiki dashboard
+    scores_folder = get_folder(
+        created_entities=created_entities,
+        folder_name="scores")
     synapseutils.copyWiki(
         syn = syn,
         entity = args.wiki,
         destinationId = args.parent_project,
-        entityMap = {"source_table":raw_data_view["id"]})
+        entityMap = {"source_table":raw_data_view["id"],
+                     "score_folder" : scores_folder['id']})
 
 
 if __name__ == "__main__":

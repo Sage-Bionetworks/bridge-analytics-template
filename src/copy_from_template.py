@@ -72,8 +72,8 @@ def read_args():
                 help = "Optional. Sub page ID of the wiki template"
                 "to use for your study project's main wiki's dashboard. "
                 "See synapseutils.copy_functions.copyWiki function's entitySubPageId parameter for more info."
-                "Defaults to 614988",
-                default = 614988)
+                "Defaults to 620218",
+                default = 620218)
     parser.add_argument("--aws-profile",
                         help="Optional. The AWS profile to use. "
                         "Defaults to 'default'.")

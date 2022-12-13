@@ -39,7 +39,7 @@ def read_args():
     parser.add_argument("--parent-project",
                         help= "Synapse ID of study project")
     parser.add_argument("--bridge-raw-data",
-                        help= "Synapse ID of folder called Bridge Raw Data containing Bridge exported data")
+                        help= "Synapse ID of folder called 'Bridge Raw Data' containing Bridge exported data")
     parser.add_argument("--app",
                         help= "App identifier associated with --parent-project.")
     parser.add_argument("--study",
@@ -47,7 +47,10 @@ def read_args():
     parser.add_argument("--template",
                         help= "File path to synapseformation template.")
     parser.add_argument("--parquet-wiki",
-                        help= "File path to markdown file for parquet folder wiki.")
+                        help = "Optional. Synapse ID of the study project containing the parquet wiki template"
+                        "to use for your study project's parquet folder's dashboard. "
+                        "Defaults to syn26546076.",
+                        default = "syn26546076")
     parser.add_argument("--owner-txt",
                         help= "File path to owner.txt for S3 bucket external storage location.")
     parser.add_argument("--parquet-bucket",
@@ -56,7 +59,7 @@ def read_args():
                         default = "bridge-downstream-dev-parquet")
     parser.add_argument("--wiki",
                        help = "Optional. Synapse ID of the study project containing the wiki template"
-                       "to use for your study project's dashboard. "
+                       "to use for your study project's main wiki's dashboard. "
                        "Defaults to syn26546076.",
                        default = "syn26546076")
     parser.add_argument("--aws-profile",
@@ -134,6 +137,25 @@ def get_folder(created_entities, folder_name):
     return folder["entity"]
 
 
+def get_wiki_sub_page(syn, wiki_project, wiki_title):
+    ''' Returns the wiki sub page object associated with wiki_title'''
+    wiki_headers = syn.getWikiHeaders(owner = wiki_project)
+    # This should be unique
+    subpage_finder = [
+            i for i in wiki_headers
+            if i["title"] == wiki_title]
+    if len(subpage_finder) == 0:
+        raise Exception(
+                "Did not find wiki subpage with "
+                f"title {wiki_title}")
+    elif len(subpage_finder) > 1:
+        raise Exception(
+                "Found more than one wiki subpage with "
+                f"title {wiki_title}")
+    subpage = subpage_finder.pop()
+    return subpage
+
+
 def modify_file_view_types(
         syn, file_view_id, default_str_length=128,
         xl_str_fields=["clientInfo"], xl_str_length=512):
@@ -205,7 +227,7 @@ def main():
     template_substitutions = {
             "{bridge_raw_data}": args.bridge_raw_data
             }
-
+    
     # read synapseformation template and create entities
     with open(args.template, "r") as f:
         template = f.read()
@@ -218,13 +240,19 @@ def main():
             creation_cls=creation_cls,
             parentid=args.parent_project)
 
+    # copy parquet wiki dashboard
     parquet_folder = get_folder(
             created_entities=created_entities,
             folder_name="parquet")
-    parquet_wiki = synapseclient.Wiki(
-            owner=parquet_folder.id,
-            markdownFile=args.parquet_wiki)
-    syn.store(parquet_wiki)
+    parquet_wiki_sub_page = get_wiki_sub_page(
+        syn, wiki_project = args.parquet_wiki, 
+        wiki_title = "Parquet_documentation_wiki")
+    synapseutils.copyWiki(
+        syn = syn,
+        entity = args.parquet_wiki,
+        destinationId = parquet_folder.id,
+        entitySubPageId = parquet_wiki_sub_page.id)
+    
     base_key = f"bridge-downstream/{args.app}/{args.study}/parquet/"
     s3_client = aws_session.client("s3")
     with open (args.owner_txt, "rb") as f:
@@ -268,14 +296,22 @@ def main():
     modify_file_view_types(
         syn=syn,
         file_view_id=raw_data_view["id"])
-
-    # copy wiki dashboard
+    # copy main wiki dashboard
+    scores_folder = get_folder(
+        created_entities=created_entities,
+        folder_name="scores")
+    main_wiki_sub_page = get_wiki_sub_page(
+        syn, wiki_project = args.wiki, 
+        wiki_title = "Main Project Wiki")
     synapseutils.copyWiki(
         syn = syn,
         entity = args.wiki,
+        entitySubPageId=main_wiki_sub_page.id,
         destinationId = args.parent_project,
-        entityMap = {"source_table":raw_data_view["id"]})
+        entityMap = {"source_table":raw_data_view["id"],
+                     "score_folder" : scores_folder['id']})
 
 
 if __name__ == "__main__":
     main()
+

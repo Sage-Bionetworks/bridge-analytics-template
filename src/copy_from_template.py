@@ -62,6 +62,11 @@ def read_args():
                        "to use for your study project's main wiki's dashboard. "
                        "Defaults to syn26546076.",
                        default = "syn26546076")
+    parser.add_argument("--project-view",
+                        help = "Optional. Synapse ID of a project view to "
+                        "include the parent project in the scope of. "
+                        "Defaults to syn50615998.",
+                        default = "syn50615998")
     parser.add_argument("--aws-profile",
                         help="Optional. The AWS profile to use. "
                         "Defaults to 'default'.")
@@ -214,6 +219,15 @@ def modify_file_view_types(
             f"/entity/{file_view_id}/table/transaction/async/start",
             body=json.dumps(table_update_request))
 
+def update_home_project_view_scope(syn, project_id, project_view_id):
+    """
+    We track which projects Bridge Downstream processes data for in a
+    project view. This function updates the scope of a project view to
+    include the project which we just templatized.
+    """
+    project_view = syn.get(project_view_id)
+    project_view.add_scope(project_id)
+    syn.store(project_view)
 
 def main():
     # setup
@@ -227,7 +241,7 @@ def main():
     template_substitutions = {
             "{bridge_raw_data}": args.bridge_raw_data
             }
-    
+
     # read synapseformation template and create entities
     with open(args.template, "r") as f:
         template = f.read()
@@ -245,14 +259,14 @@ def main():
             created_entities=created_entities,
             folder_name="parquet")
     parquet_wiki_sub_page = get_wiki_sub_page(
-        syn, wiki_project = args.parquet_wiki, 
+        syn, wiki_project = args.parquet_wiki,
         wiki_title = "Parquet_documentation_wiki")
     synapseutils.copyWiki(
         syn = syn,
         entity = args.parquet_wiki,
         destinationId = parquet_folder.id,
         entitySubPageId = parquet_wiki_sub_page.id)
-    
+
     base_key = f"bridge-downstream/{args.app}/{args.study}/parquet/"
     s3_client = aws_session.client("s3")
     with open (args.owner_txt, "rb") as f:
@@ -301,7 +315,7 @@ def main():
         created_entities=created_entities,
         folder_name="scores")
     main_wiki_sub_page = get_wiki_sub_page(
-        syn, wiki_project = args.wiki, 
+        syn, wiki_project = args.wiki,
         wiki_title = "Main Project Wiki")
     synapseutils.copyWiki(
         syn = syn,
@@ -310,6 +324,13 @@ def main():
         destinationId = args.parent_project,
         entityMap = {"source_table":raw_data_view["id"],
                      "score_folder" : scores_folder['id']})
+
+    # Add project to scope of project view
+    update_home_project_view_scope(
+            syn=syn,
+            project_id=args.parent_project,
+            project_view_id=args.project_view
+    )
 
 
 if __name__ == "__main__":

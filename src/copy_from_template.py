@@ -229,6 +229,41 @@ def update_home_project_view_scope(syn, project_id, project_view_id):
     project_view.add_scope(project_id)
     syn.store(project_view)
 
+def set_permissions_on_parquet_folder(syn, parquet_folder, bridge_raw_data_id):
+    """Set permissions on parquet folder
+
+    Set permissions on parquet folder by copying ACL from Bridge Raw Data folder.
+    Then grant BridgeDownstream admin permissions and the Mobile Toolbox Scoring
+    Team download permissions.
+    """
+    bridge_raw_data_acl = syn._getACL(bridge_raw_data_id)
+    bridge_downstream_id = 3432808
+    for acl in bridge_raw_data_acl["resourceAccess"]:
+        if acl["principalId"] == bridge_downstream_id:
+            continue
+        syn.setPermissions(
+                entity=parquet_folder["id"],
+                principalId=acl["principalId"],
+                accessType=acl["accessType"],
+                warn_if_inherits=False,
+                overwrite=True)
+    # Grant BridgeDownstream admin permissions on parquet folder
+    syn.setPermissions(
+            entity=parquet_folder["id"],
+            principalId=bridge_downstream_id,
+            accessType=[
+                "DOWNLOAD", "READ", "UPDATE", "CREATE", "CHANGE_PERMISSIONS",
+                "DELETE", "MODERATE", "CHANGE_SETTINGS"],
+            warn_if_inherits=False,
+            overwrite=True)
+    # Grant Mobile Toolbox Scoring Team download permissions on parquet folder
+    mobile_toolbox_scoring_team_id = 3466884
+    syn.setPermissions(
+            entity=parquet_folder["id"],
+            principalId=mobile_toolbox_scoring_team_id,
+            accessType=["DOWNLOAD", "READ"],
+            overwrite=True)
+
 def main():
     # setup
     args = read_args()
@@ -282,26 +317,10 @@ def main():
 
     # Set permissions on parquet folder by copying ACL
     # from Bridge Raw Data folder, excepting BridgeDownstream
-    bridge_raw_data_acl = syn._getACL(args.bridge_raw_data)
-    bridge_downstream_id = 3432808
-    for acl in bridge_raw_data_acl["resourceAccess"]:
-        if acl["principalId"] == bridge_downstream_id:
-            continue
-        syn.setPermissions(
-                entity=parquet_folder["id"],
-                principalId=acl["principalId"],
-                accessType=acl["accessType"],
-                warn_if_inherits=False,
-                overwrite=True)
-    # Grant BridgeDownstream admin permissions on parquet folder
-    syn.setPermissions(
-            entity=parquet_folder["id"],
-            principalId=bridge_downstream_id,
-            accessType=[
-                "DOWNLOAD", "READ", "UPDATE", "CREATE", "CHANGE_PERMISSIONS",
-                "DELETE", "MODERATE", "CHANGE_SETTINGS"],
-            warn_if_inherits=False,
-            overwrite=True)
+    set_permissions_on_parquet_folder(
+            syn=syn,
+            parquet_folder=parquet_folder,
+            bridge_raw_data_id=args.bridge_raw_data)
 
     # Correct column types in raw data file view
     raw_data_view = get_raw_data_view(

@@ -162,8 +162,11 @@ def get_wiki_sub_page(syn, wiki_project, wiki_title):
 
 
 def modify_file_view_types(
-        syn, file_view_id, default_str_length=128,
-        xl_str_fields=["clientInfo"], xl_str_length=512):
+        syn,
+        file_view_id,
+        default_str_length=128,
+        xl_str_length=512
+):
     '''
     Some string values in the file view are bound to become longer
     than the default set upon creation of the view. We expand their length
@@ -171,11 +174,20 @@ def modify_file_view_types(
     view won't break at some point in the future. We also correct the types
     of other columns.
     '''
+    xl_str_fields=["clientInfo", "appInfo"]
     ignore_cols = ["name", "etag", "type"]
-    date_cols = ["exportedOn", "eventTimestamp", "uploadedOn", "scheduleModifiedOn"]
-    boolean_cols = ["timeWindowPersistent"]
-    int_cols = ["sessionInstanceStartDay", "sessionInstanceEndDay",
-            "assessmentRevision", "participantVersion"]
+    date_cols = [
+            "exportedOn", "eventTimestamp", "uploadedOn", "scheduleModifiedOn",
+            "startedOn"
+    ]
+    boolean_cols = [
+            "timeWindowPersistent", "isFirstAssessment", "isLastAssessment",
+            "schedulePublished"
+    ]
+    int_cols = [
+            "sessionInstanceStartDay", "sessionInstanceEndDay", "assessmentRevision",
+            "participantVersion"
+    ]
     file_view = syn.get(file_view_id)
     cols = list(syn.getColumns(file_view["columnIds"]))
     col_changes = []
@@ -288,7 +300,6 @@ def main():
             config_list=config,
             creation_cls=creation_cls,
             parentid=args.parent_project)
-
     # copy parquet wiki dashboard
     parquet_folder = get_folder(
             created_entities=created_entities,
